@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄钟 - Pomodoro Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<style>
+/* ========== CSS 变量：风格定义 ========== */
+:root {
+  --bg: #fafaf9;
+  --bg2: #f0efed;
+  --text: #1a1a1a;
+  --text2: #666;
+  --accent: #e07a5f;
+  --accent2: #f2cc8f;
+  --card-bg: #fff;
+  --ring-bg: #e8e6e3;
+  --border: #e2e0dd;
+  --shadow: 0 2px 16px rgba(0,0,0,0.06);
+  --radius: 16px;
+  --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-weight: 400;
+  --timer-size: 260px;
+  --ring-width: 10;
+  --glow: none;
+  --btn-style: 'solid';
+  --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 极简主义 */
+body.theme-minimalist {
+  --bg: #fafaf9; --bg2: #f0efed; --text: #1a1a1a; --text2: #888;
+  --accent: #333; --accent2: #e0e0e0; --card-bg: #fff; --ring-bg: #e8e6e3;
+  --border: #e8e6e3; --font: system-ui, sans-serif; --radius: 4px;
+}
+/* 赛博朋克 */
+body.theme-cyberpunk {
+  --bg: #0a0a0a; --bg2: #111; --text: #00ff41; --text2: #0a0;
+  --accent: #ff00ff; --accent2: #00ffff; --card-bg: #0d0d0d; --ring-bg: #1a1a1a;
+  --border: #333; --font: 'Share Tech Mono', monospace; --radius: 2px;
+  --glow: 0 0 20px var(--accent); --shadow: 0 0 30px rgba(255,0,255,0.15);
+}
+/* 电子风格 */
+body.theme-electronic {
+  --bg: #0f0e17; --bg2: #1a1930; --text: #fffffe; --text2: #a7a9be;
+  --accent: #ff8906; --accent2: #e53170; --card-bg: #1a1930; --ring-bg: #2a2940;
+  --border: #2a2940; --font: system-ui, sans-serif; --radius: 8px;
+  --glow: 0 0 15px rgba(255,137,6,0.4);
+}
+/* 液晶风格 */
+body.theme-lcd {
+  --bg: #9ea88b; --bg2: #8a9478; --text: #1a1a0a; --text2: #3a3a2a;
+  --accent: #1a1a0a; --accent2: #5a6a3a; --card-bg: #aeb89b; --ring-bg: #8e9878;
+  --border: #7e8868; --font: 'Orbitron', monospace; --radius: 2px;
+}
+/* 自然有机 */
+body.theme-natural {
+  --bg: #f5f0e8; --bg2: #e8e0d0; --text: #3d3226; --text2: #8b7355;
+  --accent: #5b8c5a; --accent2: #c9a96e; --card-bg: #faf6f0; --ring-bg: #e0d8c8;
+  --border: #d4c8b0; --font: Georgia, 'Noto Serif SC', serif; --radius: 24px;
+}
+/* 可爱风格 */
+body.theme-cute {
+  --bg: #fff0f5; --bg2: #ffe4ec; --text: #5a3040; --text2: #b08090;
+  --accent: #ff6b8a; --accent2: #ffb6c1; --card-bg: #fff; --ring-bg: #ffe4ec;
+  --border: #ffd0dc; --font: 'ZCOOL KuaiLe', system-ui, sans-serif; --radius: 20px;
+  --shadow: 0 4px 20px rgba(255,107,138,0.12);
+}
+/* 明星风格 */
+body.theme-celebrity {
+  --bg: #0d0d1a; --bg2: #151530; --text: #fff; --text2: #a0a0c0;
+  --accent: #ffd700; --accent2: #c0c0c0; --card-bg: #151530; --ring-bg: #202040;
+  --border: #303050; --font: Georgia, serif; --radius: 12px;
+  --glow: 0 0 30px rgba(255,215,0,0.25); --shadow: 0 4px 30px rgba(0,0,0,0.4);
+}
+/* 异地情侣 */
+body.theme-couple {
+  --bg: #fff5f5; --bg2: #ffe8e8; --text: #4a2020; --text2: #8a6060;
+  --accent: #ff6b6b; --accent2: #ffb3b3; --card-bg: #fff; --ring-bg: #ffe0e0;
+  --border: #ffcccc; --font: system-ui, sans-serif; --radius: 16px;
+  --shadow: 0 4px 20px rgba(255,107,107,0.1);
+}
+
+/* ========== 基础样式 ========== */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.app { max-width:600px; margin:0 auto; padding:16px 20px 40px; position:relative; z-index:2; }
+
+/* ========== 全屏壁纸 ========== */
+.bg-wallpaper {
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-size:cover; background-position:center; background-repeat:no-repeat;
+  opacity:0; transition:opacity 0.6s ease;
+}
+.bg-wallpaper.active { opacity:1; }
+.bg-tint {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:rgba(0,0,0,0.35); opacity:0; transition:opacity 0.6s ease;
+}
+/* 可爱风格用浅色遮罩 */
+body.theme-cute .bg-tint { background:rgba(255,255,255,0.55); }
+.bg-tint.active { opacity:1; }
+
+/* ========== 风格选择器（下拉面板） ========== */
+.theme-picker { position:relative; display:flex; justify-content:center; padding:4px 0 12px; }
+.theme-toggle {
+  display:inline-flex; align-items:center; gap:6px; padding:8px 20px;
+  border-radius:22px; border:1.5px solid var(--border); background:var(--card-bg);
+  color:var(--text); font-size:14px; cursor:pointer; font-family:var(--font);
+  transition:all var(--transition);
+}
+.theme-toggle:hover { border-color:var(--accent); }
+.theme-toggle .arrow { font-size:10px; transition:transform 0.25s ease; }
+.theme-toggle.open .arrow { transform:rotate(180deg); }
+.theme-overlay { position:fixed; inset:0; z-index:99; display:none; }
+.theme-overlay.show { display:block; }
+.theme-dropdown {
+  position:absolute; top:100%; left:50%; transform:translateX(-50%);
+  background:var(--card-bg); border:1.5px solid var(--border); border-radius:14px;
+  padding:10px; display:grid; grid-template-columns:repeat(2,1fr); gap:6px;
+  z-index:100; box-shadow:0 8px 30px rgba(0,0,0,0.12); min-width:260px;
+  opacity:0; visibility:hidden; transition:opacity 0.2s ease, visibility 0.2s ease;
+}
+.theme-dropdown.show { opacity:1; visibility:visible; }
+.theme-option {
+  padding:10px 12px; border-radius:10px; border:1.5px solid transparent;
+  background:var(--bg); color:var(--text2); font-size:13px; cursor:pointer;
+  font-family:var(--font); text-align:center; transition:all var(--transition);
+  white-space:nowrap;
+}
+.theme-option:hover { border-color:var(--accent); color:var(--accent); }
+.theme-option.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ========== 计时器区域 ========== */
+.timer-section {
+  display:flex; flex-direction:column; align-items:center; padding:20px 0 10px;
+}
+.timer-ring-wrap { position:relative; width:var(--timer-size); height:var(--timer-size); }
+.timer-ring-wrap svg { width:100%; height:100%; transform:rotate(-90deg); }
+.ring-bg {
+  fill:none; stroke:var(--ring-bg); stroke-width:var(--ring-width);
+}
+.ring-fg {
+  fill:none; stroke:var(--accent); stroke-width:var(--ring-width);
+  stroke-linecap:round; transition:stroke-dashoffset 0.4s linear, stroke var(--transition);
+  filter:var(--glow);
+}
+.timer-display {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:52px; font-weight:700; letter-spacing:2px; font-variant-numeric:tabular-nums;
+  font-family:var(--font); color:var(--text); transition:color var(--transition);
+}
+.timer-display.paused { opacity:0.5; }
+.mode-indicator {
+  font-size:13px; color:var(--text2); margin-top:6px; letter-spacing:1px;
+  text-transform:uppercase; font-family:var(--font);
+}
+.round-dots { display:flex; gap:6px; margin-top:8px; }
+.round-dot {
+  width:10px; height:10px; border-radius:50%; background:var(--ring-bg);
+  transition:all var(--transition);
+}
+.round-dot.done { background:var(--accent2); }
+.round-dot.current { background:var(--accent); transform:scale(1.3); }
+
+/* ========== 激励语 ========== */
+.quote {
+  text-align:center; padding:12px 20px; font-size:15px; color:var(--text2);
+  font-family:var(--font); line-height:1.6; min-height:48px;
+  transition:all var(--transition);
+}
+
+/* ========== 控制按钮 ========== */
+.controls { display:flex; justify-content:center; gap:12px; margin:8px 0 16px; flex-wrap:wrap; }
+.ctrl-btn {
+  padding:12px 28px; border-radius:28px; border:none; font-size:15px; cursor:pointer;
+  font-family:var(--font); font-weight:600; transition:all var(--transition);
+  letter-spacing:0.5px;
+}
+.btn-start {
+  background:var(--accent); color:#fff; min-width:120px; box-shadow:var(--glow);
+}
+.btn-start:hover { opacity:0.85; transform:translateY(-1px); }
+.btn-reset {
+  background:var(--card-bg); color:var(--text2); border:1.5px solid var(--border);
+}
+.btn-reset:hover { border-color:var(--accent); color:var(--accent); }
+.btn-skip {
+  background:transparent; color:var(--text2); border:1.5px solid var(--border);
+  font-size:13px; padding:10px 18px;
+}
+.btn-skip:hover { border-color:var(--accent2); color:var(--accent2); }
+
+/* ========== 风格专属面板 ========== */
+.theme-panel { margin-top:8px; }
+.theme-panel:empty { display:none; }
+
+/* 可爱角色选择 */
+.char-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px; padding:8px 0; }
+.char-card {
+  aspect-ratio:1; border-radius:var(--radius); border:2px solid var(--border);
+  background:var(--card-bg); display:flex; flex-direction:column; align-items:center;
+  justify-content:center; cursor:pointer; transition:all var(--transition);
+  overflow:hidden; gap:4px;
+}
+.char-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+.char-card.selected { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%, transparent); }
+.char-card .char-img {
+  width:52px; height:52px; border-radius:50%; object-fit:cover;
+  background:var(--ring-bg); font-size:36px; display:flex; align-items:center; justify-content:center;
+}
+.char-card .char-name { font-size:11px; color:var(--text2); font-family:var(--font); }
+
+/* 明星选择 */
+.star-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px; padding:8px 0; }
+.star-card {
+  aspect-ratio:1; border-radius:var(--radius); border:2px solid var(--border);
+  background:var(--card-bg); display:flex; flex-direction:column; align-items:center;
+  justify-content:center; cursor:pointer; transition:all var(--transition);
+  overflow:hidden; gap:4px;
+}
+.star-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+.star-card.selected { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%, transparent); }
+.star-card .star-img {
+  width:52px; height:52px; border-radius:50%; object-fit:cover;
+  background:var(--ring-bg); font-size:36px; display:flex; align-items:center; justify-content:center;
+}
+.star-card .star-name { font-size:11px; color:var(--text2); font-family:var(--font); }
+
+/* 壁纸位置滑块 */
+.wallpaper-slider {
+  display:flex; align-items:center; gap:10px; padding:8px 4px;
+  font-size:12px; color:var(--text2); font-family:var(--font);
+}
+.wallpaper-slider input[type=range] {
+  flex:1; -webkit-appearance:none; appearance:none; height:4px;
+  border-radius:2px; background:var(--ring-bg); outline:none; cursor:pointer;
+}
+.wallpaper-slider input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+  background:var(--accent); cursor:pointer; border:none;
+}
+.wallpaper-slider .ws-val { min-width:32px; text-align:center; }
+
+/* 情侣视频面板 */
+.couple-panel { padding:8px 0; }
+.video-container { position:relative; width:100%; border-radius:var(--radius); overflow:hidden; background:var(--bg2); }
+.video-main { width:100%; aspect-ratio:16/10; object-fit:cover; background:#1a1a1a; display:block; }
+.video-pip {
+  position:absolute; bottom:12px; right:12px; width:120px; aspect-ratio:16/10;
+  object-fit:cover; border-radius:8px; border:2px solid rgba(255,255,255,0.6);
+  cursor:pointer; background:#2a2a2a; z-index:2;
+}
+.video-placeholder {
+  width:100%; aspect-ratio:16/10; display:flex; align-items:center; justify-content:center;
+  color:var(--text2); font-size:48px; font-family:var(--font); flex-direction:column; gap:12px;
+}
+.video-placeholder span { font-size:14px; }
+.couple-controls { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; justify-content:center; }
+.couple-btn {
+  padding:10px 20px; border-radius:20px; border:1.5px solid var(--border);
+  background:var(--card-bg); color:var(--text); cursor:pointer;
+  font-family:var(--font); font-size:13px; transition:all var(--transition);
+}
+.couple-btn:hover { border-color:var(--accent); }
+.couple-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.couple-signal-box {
+  width:100%; margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;
+}
+.couple-signal-box input {
+  flex:1; min-width:160px; padding:10px; border-radius:8px;
+  border:1.5px solid var(--border); background:var(--card-bg); color:var(--text);
+  font-family:var(--font); font-size:12px;
+}
+.couple-status { font-size:12px; color:var(--text2); text-align:center; margin-top:6px; }
+
+/* ========== 历史记录 ========== */
+.history-section { margin-top:24px; }
+.history-title {
+  font-size:14px; font-weight:600; color:var(--text2); margin-bottom:8px;
+  font-family:var(--font); display:flex; align-items:center; gap:8px;
+}
+.history-clear { font-size:11px; color:var(--accent); cursor:pointer; border:none; background:none; }
+.history-list { display:flex; flex-direction:column; gap:6px; }
+.history-item {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:10px 14px; border-radius:10px; background:var(--card-bg);
+  border:1px solid var(--border); font-size:13px; transition:all var(--transition);
+}
+.history-item .hi-date { color:var(--text2); font-size:11px; }
+.history-item .hi-type { font-weight:600; }
+.history-item .hi-type.focus { color:var(--accent); }
+.history-item .hi-duration { color:var(--text2); font-variant-numeric:tabular-nums; }
+.empty-history { text-align:center; color:var(--text2); font-size:13px; padding:20px; }
+
+/* ========== 响应式 ========== */
+@media (max-width:768px) {
+  .app { padding:12px 14px 32px; }
+  :root { --timer-size:220px; --ring-width:8; }
+  .theme-dropdown { min-width:240px; max-width:calc(100vw - 40px); }
+  .timer-display { font-size:42px; }
+  .ctrl-btn { padding:10px 22px; font-size:14px; }
+  .char-grid, .star-grid { grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:8px; }
+  .char-card .char-img, .star-card .star-img { width:42px; height:42px; font-size:28px; }
+}
+@media (max-width:400px) {
+  .app { padding:8px 10px 24px; }
+  :root { --timer-size:180px; --ring-width:7; }
+  .theme-dropdown { min-width:220px; padding:8px; gap:4px; }
+  .theme-option { padding:8px 6px; font-size:12px; }
+  .theme-toggle { font-size:13px; padding:7px 16px; }
+  .timer-display { font-size:36px; }
+  .ctrl-btn { padding:8px 16px; font-size:13px; border-radius:22px; }
+  .controls { gap:8px; }
+  .char-grid, .star-grid { grid-template-columns:repeat(auto-fill,minmax(62px,1fr)); gap:6px; }
+  .char-card .char-img, .star-card .star-img { width:36px; height:36px; font-size:24px; }
+}
+
+/* ========== 动画 ========== */
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+.timer-display.running { animation:pulse 2s ease-in-out infinite; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+.quote { animation:fadeIn 0.5s ease; }
+.theme-panel { animation:fadeIn 0.3s ease; }
+
+/* 赛博朋克特殊效果 */
+body.theme-cyberpunk .ring-fg { animation:glitch 3s infinite; }
+@keyframes glitch {
+  0%,94%,96%,98%,100% { opacity:1; }
+  95%,97% { opacity:0.6; }
+}
+body.theme-electronic .timer-ring-wrap svg { animation:scan 4s linear infinite; }
+@keyframes scan { 0% { filter:brightness(1); } 50% { filter:brightness(1.2); } 100% { filter:brightness(1); } }
+
+/* 液晶屏闪烁 */
+body.theme-lcd .timer-display { text-shadow:0 0 2px rgba(0,0,0,0.3); }
+body.theme-lcd .app { background:linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%); }
+
+/* 自然有机 - 柔和呼吸 */
+body.theme-natural .timer-ring-wrap { filter:drop-shadow(0 4px 12px rgba(91,140,90,0.15)); }
+
+/* 明星 - 闪烁星光 */
+body.theme-celebrity .ring-fg { filter:drop-shadow(0 0 8px rgba(255,215,0,0.5)); }
+
+/* 情侣 - 心跳 */
+body.theme-couple .timer-display.running { animation:none; }
+@keyframes heartbeat { 0%,100% { transform:translate(-50%,-50%) scale(1); } 15% { transform:translate(-50%,-50%) scale(1.05); } 30% { transform:translate(-50%,-50%) scale(1); } }
+body.theme-couple .timer-display.running { animation:heartbeat 1.5s ease-in-out infinite; }
+</style>
+</head>
+<body class="theme-minimalist">
+
+<!-- 全屏壁纸背景（可爱/明星风格选中后显示） -->
+<div class="bg-wallpaper" id="bgWallpaper"></div>
+<div class="bg-tint" id="bgTint"></div>
+
+<div class="app">
+  <!-- 风格选择器 -->
+  <div class="theme-picker" id="themePicker">
+    <button class="theme-toggle" id="themeToggle">
+      <span id="themeLabel">极简主义</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div class="theme-overlay" id="themeOverlay"></div>
+    <div class="theme-dropdown" id="themeDropdown">
+      <button class="theme-option active" data-theme="minimalist">极简主义</button>
+      <button class="theme-option" data-theme="cyberpunk">赛博朋克</button>
+      <button class="theme-option" data-theme="electronic">电子风格</button>
+      <button class="theme-option" data-theme="lcd">液晶风格</button>
+      <button class="theme-option" data-theme="natural">自然有机</button>
+      <button class="theme-option" data-theme="cute">可爱风格</button>
+      <button class="theme-option" data-theme="celebrity">明星风格</button>
+      <button class="theme-option" data-theme="couple">异地情侣</button>
+    </div>
+  </div>
+
+  <!-- 计时器 -->
+  <div class="timer-section">
+    <div class="timer-ring-wrap" id="timerRing">
+      <svg viewBox="0 0 220 220">
+        <circle class="ring-bg" cx="110" cy="110" r="100"/>
+        <circle class="ring-fg" id="ringFg" cx="110" cy="110" r="100"
+          stroke-dasharray="628.32" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-display" id="timerDisplay">25:00</div>
+    </div>
+    <div class="mode-indicator" id="modeIndicator">专注 - 第 1 轮</div>
+    <div class="round-dots" id="roundDots">
+      <span class="round-dot current"></span>
+      <span class="round-dot"></span>
+      <span class="round-dot"></span>
+      <span class="round-dot"></span>
+    </div>
+  </div>
+
+  <!-- 激励语 -->
+  <div class="quote" id="quote">少即是多，专注当下。</div>
+
+  <!-- 控制按钮 -->
+  <div class="controls">
+    <button class="ctrl-btn btn-start" id="btnStart">开始专注</button>
+    <button class="ctrl-btn btn-reset" id="btnReset">重置</button>
+    <button class="ctrl-btn btn-skip" id="btnSkip">跳过</button>
+  </div>
+
+  <!-- 风格专属面板 -->
+  <div class="theme-panel" id="themePanel"></div>
+
+  <!-- 历史记录 -->
+  <div class="history-section">
+    <div class="history-title">
+      历史记录
+      <button class="history-clear" id="btnClearHistory">清空</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="empty-history">暂无记录，开始你的第一个番茄钟吧~</div>
+    </div>
+  </div>
+</div>
+
+<!-- 隐藏的本地视频元素（用于 WebRTC） -->
+<video id="localVideo" autoplay muted playsinline style="display:none"></video>
+
+<script>
+/* ================================================================
+   番茄钟 - Pomodoro Timer
+   单文件 HTML，无需后端，数据存储在 localStorage
+   ================================================================ */
+
+// ─── 常量 ─────────────────────────────────────────────
+const FOCUS_TIME = 25 * 60;       // 专注 25 分钟
+const SHORT_BREAK = 5 * 60;       // 短休息 5 分钟
+const LONG_BREAK = 25 * 60;       // 长休息 25 分钟
+const ROUNDS_PER_CYCLE = 4;       // 每 4 轮一次长休息
+const CIRCUMFERENCE = 2 * Math.PI * 100; // 圆环周长（r=100）
+
+// ─── 风格激励语 ────────────────────────────────────────
+const quotes = {
+  minimalist: [
+    '少即是多，专注当下。', '删繁就简，方得始终。', '一心一用，万事可成。',
+    '安静下来，时间就是力量。', 'Less but better.', '做一件事，做到极致。',
+  ],
+  cyberpunk: [
+    '打破系统，重塑自我。', 'Hack the system. Hack yourself.', '在数字洪流中找到你的节奏。',
+    '超越极限，永不停歇。', '大脑是最强的处理器。', '专注即是反抗。',
+  ],
+  electronic: [
+    'LEVEL UP！继续前进！', 'READY PLAYER ONE — 你就是主角。', '能量充足，继续战斗！',
+    '下一关就在眼前。', '按 START 开始新的征程。', 'Boss 战需要全神贯注！',
+  ],
+  lcd: [
+    '[ 系统就绪 ] 请在提示音后开始。', '[ 计时中 ] 勿扰模式已激活。', '[ 数据流 ] 高效运行中...',
+    'DIGITAL FOCUS // MODE:ON', '剩余电量：充足。继续运作。', 'SYS.OK — 一切正常运转。',
+  ],
+  natural: [
+    '像树一样，安静地生长。', '滴水穿石，不是力量大，是功夫深。', '风吹叶动，心静如水。',
+    '春种一粒粟，秋收万颗子。', '大自然从不着急，却一切准时。', '静待花开，专注是最好的养分。',
+  ],
+  cute: [
+    '加油哦~ 你是最棒的喵！🐱', '再坚持一下下，棒棒糖在向你招手~ 🍭', '小可爱正在认真工作中！✨',
+    '今天的努力，是明天的小确幸~ 🌸', '你做得到哒！比心心~ 💕', '乖~ 完成这个番茄钟就奖励自己！',
+  ],
+  celebrity: [
+    '今天也要闪闪发光！⭐', '做自己人生的主角。', '聚光灯下，专注是最美的姿态。',
+    '闪耀时刻——由每一个当下铸就。', '你就是自己的超级巨星。', '台上一分钟，台下十年功。',
+  ],
+  couple: [
+    '相隔千里，心在一起。', '一起努力，变成更好的我们。', '为了同一个未来，各自发光。',
+    '距离不是问题，专注让我们更近。', '想你的时候，就把思念变成动力。', '两个人，同一个节奏。',
+  ],
+};
+
+// ─── 可爱角色数据（替换 imgUrl 为你的图片路径） ──────────
+const cuteCharacters = [
+  /* 如需替换真实图片，将 imgUrl 设为图片路径，例如 'images/cat.png' 或网络URL */
+  { id:'cat',    name:'小猫咪',   emoji:'🐱', imgUrl:'images/可爱01.jpg', color:'#ffe0e8' },
+  { id:'bunny',  name:'小兔子',   emoji:'🐰', imgUrl:'images/可爱02.jpg', color:'#fff0f5' },
+  { id:'bear',   name:'小熊软糖', emoji:'🧸', imgUrl:'images/可爱03.jpg', color:'#fff5e6' },
+  { id:'panda',  name:'小熊猫',   emoji:'🐼', imgUrl:'images/可爱04.jpg', color:'#f5f5f0' },
+  { id:'fox',    name:'小狐狸',   emoji:'🦊', imgUrl:'images/可爱05.jpg', color:'#fff0e0' },
+  { id:'penguin',name:'小企鹅',   emoji:'🐧', imgUrl:'images/可爱06.jpg', color:'#f0f0ff' },
+  { id:'duck',   name:'小黄鸭',   emoji:'🐤', imgUrl:'images/可爱07.jpg', color:'#ffffe0' },
+  { id:'shiba',  name:'小柴犬',   emoji:'🐶', imgUrl:'images/可爱08.jpg', color:'#fff5e6' },
+];
+
+// ─── 明星数据（替换 imgUrl 为你的图片路径） ──────────────
+const celebrities = [
+  /* 如需替换真实图片，将 imgUrl 设为图片路径，例如 'images/star1.jpg' 或网络URL */
+  { id:'liudehua',   name:'刘德华',  emoji:'🎤', imgUrl:'images/明星/刘德华.jpg', color:'#2a2a40' },
+  { id:'zhoujielun', name:'周杰伦',  emoji:'🎹', imgUrl:'images/明星/周杰伦.jpg', color:'#3a2a3a' },
+  { id:'wangyibo',   name:'王一博',  emoji:'💚', imgUrl:'images/明星/王一博.jpg', color:'#2a3a2a' },
+  { id:'dilireba',   name:'迪丽热巴',emoji:'👑', imgUrl:'images/明星/热巴.jpg',   color:'#3a2a2a' },
+  { id:'yangmi',     name:'杨幂',    emoji:'🌟', imgUrl:'images/明星/杨幂.jpg',   color:'#2a2a3a' },
+  { id:'zhaoliying', name:'赵丽颖',  emoji:'🦋', imgUrl:'images/明星/赵丽颖.jpg', color:'#3a3a2a' },
+  { id:'yiyangqianxi',name:'易烊千玺',emoji:'🔥', imgUrl:'images/明星/易烊千玺.jpg', color:'#2a3a3a' },
+  { id:'wangjunkai',  name:'王俊凯',  emoji:'✨', imgUrl:'images/明星/王俊凯.jpg', color:'#3a2a3a' },
+];
+
+// ─── 应用状态 ─────────────────────────────────────────
+const state = {
+  theme: 'minimalist',
+  timerStatus: 'idle',     // idle | running | paused
+  mode: 'focus',           // focus | short_break | long_break
+  timeLeft: FOCUS_TIME,
+  totalTime: FOCUS_TIME,
+  round: 1,                // 当前第几轮 (1-4)
+  completedRounds: 0,
+  selectedCute: null,      // 选中的可爱角色 ID
+  selectedStar: null,      // 选中的明星 ID
+  timerInterval: null,
+  webrtc: {
+    pc: null,
+    localStream: null,
+    remoteStream: null,
+    connected: false,
+    isMainVideoRemote: true,
+  },
+};
+
+// ─── 壁纸位置缓存 ─────────────────────────────────────
+const wallpaperPos = {}; // { imgUrl: yPercent }
+
+function getWallpaperY(imgUrl) {
+  if (wallpaperPos[imgUrl] !== undefined) return wallpaperPos[imgUrl];
+  return 22; // 默认：距顶部 22%
+}
+
+// ─── 音频管理器 ────────────────────────────────────────
+const Audio = {
+  ctx: null,
+  getCtx() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return this.ctx;
+  },
+  play(type) {
+    try {
+      const ctx = this.getCtx();
+      const now = ctx.currentTime;
+      // 不同风格不同音效
+      if (type === 'focus_end') {
+        // 三连上升音
+        [0, 0.15, 0.3].forEach((t, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.value = 520 + i * 130;
+          gain.gain.setValueAtTime(0.3, now + t);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + t + 0.3);
+          osc.start(now + t); osc.stop(now + t + 0.35);
+        });
+      } else if (type === 'break_end') {
+        // 柔和两音
+        [0, 0.2].forEach((t, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.value = 440 - i * 60;
+          gain.gain.setValueAtTime(0.25, now + t);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + t + 0.4);
+          osc.start(now + t); osc.stop(now + t + 0.45);
+        });
+      }
+    } catch(e) { /* 音频不可用时静默忽略 */ }
+  }
+};
+
+// ─── 存储管理器 ─────────────────────────────────────────
+const Storage = {
+  key: 'pomodoro_data',
+  get() {
+    try {
+      const raw = localStorage.getItem(this.key);
+      return raw ? JSON.parse(raw) : { theme:'minimalist', history:[], cute:null, star:null };
+    } catch { return { theme:'minimalist', history:[], cute:null, star:null }; }
+  },
+  save(data) {
+    try { localStorage.setItem(this.key, JSON.stringify(data)); } catch {}
+  },
+  loadState() {
+    const data = this.get();
+    if (data.theme) setTheme(data.theme);
+    if (data.cute) state.selectedCute = data.cute;
+    if (data.star) state.selectedStar = data.star;
+    renderHistory(data.history || []);
+    renderThemePanel();
+  },
+  addHistory(entry) {
+    const data = this.get();
+    data.history.unshift(entry);
+    if (data.history.length > 100) data.history = data.history.slice(0, 100); // 最多100条
+    this.save(data);
+    renderHistory(data.history);
+  },
+  clearHistory() {
+    const data = this.get();
+    data.history = [];
+    this.save(data);
+    renderHistory([]);
+  },
+  persistSettings() {
+    const data = this.get();
+    data.theme = state.theme;
+    data.cute = state.selectedCute;
+    data.star = state.selectedStar;
+    this.save(data);
+  },
+};
+
+// ─── 渲染函数 ──────────────────────────────────────────
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function updateTimerDisplay() {
+  document.getElementById('timerDisplay').textContent = formatTime(state.timeLeft);
+  // 更新圆环
+  const progress = 1 - (state.timeLeft / state.totalTime);
+  const offset = CIRCUMFERENCE * progress;
+  document.getElementById('ringFg').setAttribute('stroke-dashoffset', offset);
+
+  // 运行/暂停状态样式
+  const display = document.getElementById('timerDisplay');
+  display.classList.remove('running','paused');
+  if (state.timerStatus === 'running') display.classList.add('running');
+  if (state.timerStatus === 'paused') display.classList.add('paused');
+}
+
+function updateModeIndicator() {
+  const el = document.getElementById('modeIndicator');
+  const modeNames = { focus:'专注', short_break:'短休息', long_break:'长休息' };
+  el.textContent = modeNames[state.mode] + ' - 第 ' + state.round + ' 轮';
+}
+
+function updateRoundDots() {
+  const dots = document.querySelectorAll('#roundDots .round-dot');
+  dots.forEach((dot, i) => {
+    dot.classList.remove('done','current');
+    if (i + 1 < state.round || (i + 1 === state.round && state.mode !== 'focus')) {
+      dot.classList.add('done');
+    } else if (i + 1 === state.round && state.mode === 'focus') {
+      dot.classList.add('current');
+    }
+  });
+}
+
+function randomQuote() {
+  const list = quotes[state.theme] || quotes.minimalist;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function updateQuote() {
+  document.getElementById('quote').textContent = randomQuote();
+}
+
+function updateStartButton() {
+  const btn = document.getElementById('btnStart');
+  if (state.timerStatus === 'running') {
+    btn.textContent = '暂停';
+  } else if (state.timerStatus === 'paused') {
+    btn.textContent = '继续';
+  } else {
+    btn.textContent = state.mode === 'focus' ? '开始专注' : '开始休息';
+  }
+}
+
+function renderHistory(history) {
+  const list = document.getElementById('historyList');
+  if (!history || history.length === 0) {
+    list.innerHTML = '<div class="empty-history">暂无记录，开始你的第一个番茄钟吧~</div>';
+    return;
+  }
+  list.innerHTML = history.slice(0, 20).map(h => {
+    const typeName = { focus:'🍅 专注', short_break:'☕ 短休息', long_break:'🛌 长休息' };
+    const date = new Date(h.time);
+    const dateStr = date.toLocaleDateString('zh-CN') + ' ' +
+      date.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' });
+    return `<div class="history-item">
+      <span class="hi-type ${h.mode}">${typeName[h.mode] || h.mode}</span>
+      <span class="hi-duration">${formatTime(h.duration)}</span>
+      <span class="hi-date">${dateStr}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateWallpaper() {
+  const wallpaper = document.getElementById('bgWallpaper');
+  const tint = document.getElementById('bgTint');
+  let imgUrl = '';
+
+  if (state.theme === 'cute' && state.selectedCute) {
+    const c = cuteCharacters.find(ch => ch.id === state.selectedCute);
+    imgUrl = c ? c.imgUrl : '';
+  } else if (state.theme === 'celebrity' && state.selectedStar) {
+    const s = celebrities.find(st => st.id === state.selectedStar);
+    imgUrl = s ? s.imgUrl : '';
+  }
+
+  if (imgUrl) {
+    wallpaper.style.backgroundImage = `url(${imgUrl})`;
+    wallpaper.style.backgroundPosition = `center ${getWallpaperY(imgUrl)}%`;
+    wallpaper.classList.add('active');
+    tint.classList.add('active');
+  } else {
+    wallpaper.classList.remove('active');
+    tint.classList.remove('active');
+  }
+}
+
+function getActiveWallpaperUrl() {
+  if (state.theme === 'cute' && state.selectedCute) {
+    const c = cuteCharacters.find(ch => ch.id === state.selectedCute);
+    return c ? c.imgUrl : '';
+  }
+  if (state.theme === 'celebrity' && state.selectedStar) {
+    const s = celebrities.find(st => st.id === state.selectedStar);
+    return s ? s.imgUrl : '';
+  }
+  return '';
+}
+
+function renderWallpaperSlider(panel) {
+  const imgUrl = getActiveWallpaperUrl();
+  if (!imgUrl) return;
+  const y = getWallpaperY(imgUrl);
+  const div = document.createElement('div');
+  div.className = 'wallpaper-slider';
+  div.innerHTML = `
+    <span>壁纸</span>
+    <input type="range" min="0" max="100" value="${y}" id="wallpaperSlider">
+    <span class="ws-val" id="wsVal">${y}%</span>
+  `;
+  panel.appendChild(div);
+  // 绑定滑块事件
+  const slider = div.querySelector('#wallpaperSlider');
+  const valEl = div.querySelector('#wsVal');
+  slider.addEventListener('input', () => {
+    const v = parseInt(slider.value);
+    wallpaperPos[imgUrl] = v;
+    valEl.textContent = v + '%';
+    document.getElementById('bgWallpaper').style.backgroundPosition = `center ${v}%`;
+  });
+}
+
+function renderThemePanel() {
+  const panel = document.getElementById('themePanel');
+  if (state.theme === 'cute') renderCutePanel(panel);
+  else if (state.theme === 'celebrity') renderStarPanel(panel);
+  else if (state.theme === 'couple') renderCouplePanel(panel);
+  else panel.innerHTML = '';
+  updateWallpaper();
+}
+
+function renderCutePanel(panel) {
+  panel.innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px;font-family:var(--font);">
+      选一个可爱的学习伙伴吧~
+    </div>
+    <div class="char-grid">
+      ${cuteCharacters.map(c => `
+        <div class="char-card${state.selectedCute === c.id ? ' selected' : ''}" data-cute="${c.id}">
+          <div class="char-img" style="background:${c.color};">
+            ${c.imgUrl ? `<img src="${c.imgUrl}" alt="${c.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : c.emoji}
+          </div>
+          <span class="char-name">${c.name}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text2);margin-top:4px;text-align:center;">
+      <!-- 替换图片：修改上面 cuteCharacters 数组中对应角色的 imgUrl 字段 -->
+    </div>
+  `;
+  // 绑定点击
+  panel.querySelectorAll('.char-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.cute;
+      state.selectedCute = state.selectedCute === id ? null : id;
+      Storage.persistSettings();
+      renderThemePanel();
+    });
+  });
+  renderWallpaperSlider(panel);
+}
+
+function renderStarPanel(panel) {
+  panel.innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px;font-family:var(--font);">
+      选一位你喜欢的明星陪伴学习吧~
+    </div>
+    <div class="star-grid">
+      ${celebrities.map(s => `
+        <div class="star-card${state.selectedStar === s.id ? ' selected' : ''}" data-star="${s.id}">
+          <div class="star-img" style="background:${s.color};">
+            ${s.imgUrl ? `<img src="${s.imgUrl}" alt="${s.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : s.emoji}
+          </div>
+          <span class="star-name">${s.name}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text2);margin-top:4px;text-align:center;">
+      <!-- 替换图片：修改上面 celebrities 数组中对应明星的 imgUrl 字段 -->
+    </div>
+  `;
+  panel.querySelectorAll('.star-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.star;
+      state.selectedStar = state.selectedStar === id ? null : id;
+      Storage.persistSettings();
+      renderThemePanel();
+    });
+  });
+  renderWallpaperSlider(panel);
+}
+
+function renderCouplePanel(panel) {
+  const connected = state.webrtc.connected;
+  const isMainRemote = state.webrtc.isMainVideoRemote;
+  panel.innerHTML = `
+    <div class="couple-panel">
+      <div class="video-container" id="videoContainer">
+        ${connected
+          ? `<video class="video-main" id="videoMain" autoplay playsinline></video>
+             <video class="video-pip" id="videoPip" autoplay playsinline muted></video>`
+          : `<div class="video-placeholder">
+               <span>💕</span>
+               <span>与TA建立连接，一起专注学习</span>
+             </div>`
+        }
+      </div>
+      <div class="couple-status" id="coupleStatus">
+        ${connected ? '已连接 · 点击小窗切换画面' : '未连接'}
+      </div>
+      <div class="couple-controls">
+        ${!state.webrtc.localStream
+          ? `<button class="couple-btn primary" id="btnStartCam">打开摄像头</button>`
+          : `<button class="couple-btn" id="btnStopCam">关闭摄像头</button>`
+        }
+        ${state.webrtc.localStream && !connected
+          ? `<button class="couple-btn primary" id="btnCreateOffer">创建连接</button>
+             <button class="couple-btn" id="btnAcceptOffer">加入连接</button>`
+          : ''
+        }
+        ${connected
+          ? `<button class="couple-btn" id="btnHangUp">挂断</button>`
+          : ''
+        }
+      </div>
+      <div class="couple-signal-box" id="signalBox" style="display:none;">
+        <input type="text" id="signalInput" placeholder="在此粘贴对方发来的连接码...">
+        <button class="couple-btn primary" id="btnSendSignal">发送</button>
+      </div>
+    </div>
+  `;
+
+  // 设置视频源
+  if (connected) {
+    setTimeout(() => {
+      const mainVid = document.getElementById('videoMain');
+      const pipVid = document.getElementById('videoPip');
+      if (mainVid && state.webrtc.remoteStream) {
+        mainVid.srcObject = isMainRemote ? state.webrtc.remoteStream : state.webrtc.localStream;
+      }
+      if (pipVid && state.webrtc.localStream) {
+        pipVid.srcObject = isMainRemote ? state.webrtc.localStream : state.webrtc.remoteStream;
+        pipVid.addEventListener('click', () => {
+          state.webrtc.isMainVideoRemote = !state.webrtc.isMainVideoRemote;
+          renderThemePanel();
+        });
+      }
+    }, 100);
+  }
+
+  // 绑定按钮事件
+  setTimeout(() => bindCoupleEvents(), 50);
+}
+
+function bindCoupleEvents() {
+  const btnCam = document.getElementById('btnStartCam');
+  const btnStopCam = document.getElementById('btnStopCam');
+  const btnCreate = document.getElementById('btnCreateOffer');
+  const btnAccept = document.getElementById('btnAcceptOffer');
+  const btnHangUp = document.getElementById('btnHangUp');
+  const btnSend = document.getElementById('btnSendSignal');
+  const signalBox = document.getElementById('signalBox');
+  const signalInput = document.getElementById('signalInput');
+
+  if (btnCam) btnCam.addEventListener('click', startCamera);
+  if (btnStopCam) btnStopCam.addEventListener('click', stopCamera);
+  if (btnCreate) btnCreate.addEventListener('click', () => { signalBox.style.display='flex'; signalInput.placeholder='生成中...点击下方发送按钮复制连接码'; createOffer(); });
+  if (btnAccept) btnAccept.addEventListener('click', () => { signalBox.style.display='flex'; signalInput.placeholder='在此粘贴对方发来的连接码，然后点击发送'; });
+  if (btnHangUp) btnHangUp.addEventListener('click', hangUp);
+  if (btnSend) btnSend.addEventListener('click', () => handleSignal(signalInput.value));
+}
+
+// ─── WebRTC 管理器 ──────────────────────────────────────
+
+/** SDP 信令编码（SDP 本身为 ASCII，但 JSON 封装后统一用 UTF-8 → Base64） */
+function encodeSignal(data) {
+  const bytes = new TextEncoder().encode(data);
+  return btoa(String.fromCharCode(...bytes));
+}
+function decodeSignal(base64) {
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+const RTC_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ]
+};
+
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+    state.webrtc.localStream = stream;
+    document.getElementById('localVideo').srcObject = stream;
+    renderThemePanel();
+  } catch(e) {
+    alert('无法访问摄像头/麦克风，请检查浏览器权限设置。\n\n错误：' + e.message);
+  }
+}
+
+function stopCamera() {
+  if (state.webrtc.localStream) {
+    state.webrtc.localStream.getTracks().forEach(t => t.stop());
+    state.webrtc.localStream = null;
+    document.getElementById('localVideo').srcObject = null;
+  }
+  if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
+  state.webrtc.connected = false;
+  state.webrtc.remoteStream = null;
+  renderThemePanel();
+}
+
+function createPeerConnection() {
+  // 关闭旧连接避免资源泄漏
+  if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  // 添加本地流
+  if (state.webrtc.localStream) {
+    state.webrtc.localStream.getTracks().forEach(t => pc.addTrack(t, state.webrtc.localStream));
+  }
+  // 接收远程流
+  pc.ontrack = (event) => {
+    state.webrtc.remoteStream = event.streams[0];
+    state.webrtc.connected = true;
+    renderThemePanel();
+  };
+  // ICE 候选
+  pc.onicecandidate = (event) => {
+    // ICE candidates 会被包含在 SDP 中（等 gathering 完成）
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      state.webrtc.connected = false;
+      renderThemePanel();
+    }
+  };
+  state.webrtc.pc = pc;
+  return pc;
+}
+
+async function createOffer() {
+  const pc = createPeerConnection();
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  // 等待 ICE gathering 完成
+  await waitForIceComplete(pc);
+  const signalData = JSON.stringify({
+    type: 'offer',
+    sdp: pc.localDescription.sdp,
+  });
+  const encoded = encodeSignal(signalData);
+  copyToClipboard(encoded);
+  document.getElementById('signalInput').value = encoded;
+  document.getElementById('signalInput').placeholder = '已生成连接码，复制发送给对方，等待回复...';
+  document.getElementById('coupleStatus').textContent = '已生成连接码，请发送给对方';
+}
+
+async function handleSignal(input) {
+  try {
+    const decoded = JSON.parse(decodeSignal(input.trim()));
+    const pc = state.webrtc.pc || createPeerConnection();
+
+    if (decoded.type === 'offer') {
+      await pc.setRemoteDescription({ type:'offer', sdp:decoded.sdp });
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitForIceComplete(pc);
+      const signalData = JSON.stringify({
+        type: 'answer',
+        sdp: pc.localDescription.sdp,
+      });
+      const encoded = encodeSignal(signalData);
+      copyToClipboard(encoded);
+      document.getElementById('signalInput').value = encoded;
+      document.getElementById('signalInput').placeholder = '回复码已复制到剪贴板！发送给对方。';
+      document.getElementById('coupleStatus').textContent = '已生成回复码，请发送给对方';
+    } else if (decoded.type === 'answer') {
+      await pc.setRemoteDescription({ type:'answer', sdp:decoded.sdp });
+      document.getElementById('signalInput').value = '';
+      document.getElementById('signalInput').placeholder = '连接建立中...';
+      document.getElementById('coupleStatus').textContent = '连接建立中...';
+      document.getElementById('signalBox').style.display = 'none';
+    }
+  } catch(e) {
+    alert('连接码格式错误，请检查是否完整复制。\n\n错误：' + e.message);
+  }
+}
+
+function waitForIceComplete(pc) {
+  return new Promise(resolve => {
+    if (pc.iceGatheringState === 'complete') { resolve(); return; }
+    pc.onicegatheringstatechange = () => {
+      if (pc.iceGatheringState === 'complete') resolve();
+    };
+    // 超时保护
+    setTimeout(resolve, 5000);
+  });
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+  // 兜底：选中文本
+  const input = document.getElementById('signalInput');
+  if (input) { input.value = text; input.select(); }
+}
+
+function hangUp() {
+  if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
+  state.webrtc.connected = false;
+  state.webrtc.remoteStream = null;
+  state.webrtc.isMainVideoRemote = true;
+  renderThemePanel();
+}
+
+// ─── 计时器引擎 ────────────────────────────────────────
+
+function startTimer() {
+  if (state.timerStatus === 'idle') {
+    // 新开始
+    if (state.mode === 'focus') {
+      state.totalTime = FOCUS_TIME;
+      state.timeLeft = FOCUS_TIME;
+    }
+  }
+  state.timerStatus = 'running';
+  updateStartButton();
+  updateTimerDisplay();
+  updateQuote();
+
+  clearInterval(state.timerInterval);
+  const startTime = Date.now();
+  const startLeft = state.timeLeft;
+
+  state.timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    state.timeLeft = Math.max(0, startLeft - elapsed);
+    updateTimerDisplay();
+
+    if (state.timeLeft <= 0) {
+      timerComplete();
+    }
+  }, 200);
+}
+
+function pauseTimer() {
+  state.timerStatus = 'paused';
+  clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  updateStartButton();
+  updateTimerDisplay();
+}
+
+function resetTimer() {
+  clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  state.timerStatus = 'idle';
+  state.timeLeft = state.mode === 'focus' ? FOCUS_TIME : (state.mode === 'long_break' ? LONG_BREAK : SHORT_BREAK);
+  state.totalTime = state.timeLeft;
+  updateStartButton();
+  updateTimerDisplay();
+}
+
+function skipTimer() {
+  clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  timerComplete();
+}
+
+function timerComplete() {
+  clearInterval(state.timerInterval);
+  state.timerInterval = null;
+
+  const doneMode = state.mode;
+
+  // 记录历史
+  Storage.addHistory({
+    time: Date.now(),
+    mode: state.mode,
+    duration: state.mode === 'focus' ? FOCUS_TIME : (state.mode === 'long_break' ? LONG_BREAK : SHORT_BREAK),
+  });
+
+  // 播放音效
+  Audio.play(doneMode === 'focus' ? 'focus_end' : 'break_end');
+
+  // 切换到下一个模式
+  if (state.mode === 'focus') {
+    state.completedRounds++;
+    if (state.completedRounds % ROUNDS_PER_CYCLE === 0) {
+      state.mode = 'long_break';
+      state.timeLeft = LONG_BREAK;
+    } else {
+      state.mode = 'short_break';
+      state.timeLeft = SHORT_BREAK;
+    }
+  } else {
+    // 休息结束，开始下一轮专注
+    state.mode = 'focus';
+    state.round = (state.round % ROUNDS_PER_CYCLE) + 1;
+    state.timeLeft = FOCUS_TIME;
+  }
+
+  state.totalTime = state.timeLeft;
+  state.timerStatus = 'idle';
+  updateTimerDisplay();
+  updateModeIndicator();
+  updateRoundDots();
+  updateStartButton();
+  updateQuote();
+
+  // 浏览器通知
+  notifyCompletion(doneMode);
+
+  // 更新圆环（重置）
+  document.getElementById('ringFg').setAttribute('stroke-dashoffset', '0');
+}
+
+function notifyCompletion(mode) {
+  const msg = mode === 'focus'
+    ? '🎉 专注时间结束！休息一下吧~'
+    : '⏰ 休息时间结束！准备开始新的专注吧~';
+  // 页面标题闪烁
+  const origTitle = document.title;
+  document.title = msg;
+  setTimeout(() => { document.title = origTitle; }, 3000);
+  // Web Notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('番茄钟', { body: msg, icon:'🍅' });
+  }
+}
+
+// ─── 风格切换 ──────────────────────────────────────────
+
+const themeNames = {
+  minimalist:'极简主义', cyberpunk:'赛博朋克', electronic:'电子风格',
+  lcd:'液晶风格', natural:'自然有机', cute:'可爱风格',
+  celebrity:'明星风格', couple:'异地情侣',
+};
+
+function setTheme(name) {
+  state.theme = name;
+  document.body.className = 'theme-' + name;
+  // 更新下拉选项状态
+  document.querySelectorAll('.theme-option').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === name);
+  });
+  // 更新切换按钮文字
+  document.getElementById('themeLabel').textContent = themeNames[name] || name;
+  updateQuote();
+  renderThemePanel();
+  Storage.persistSettings();
+
+  if (name !== 'couple' && state.webrtc.localStream) {
+    stopCamera();
+  }
+
+  updateTimerDisplay();
+}
+
+function toggleThemeDropdown() {
+  const dropdown = document.getElementById('themeDropdown');
+  const overlay = document.getElementById('themeOverlay');
+  const toggle = document.getElementById('themeToggle');
+  const show = !dropdown.classList.contains('show');
+  dropdown.classList.toggle('show', show);
+  overlay.classList.toggle('show', show);
+  toggle.classList.toggle('open', show);
+}
+
+function closeThemeDropdown() {
+  document.getElementById('themeDropdown').classList.remove('show');
+  document.getElementById('themeOverlay').classList.remove('show');
+  document.getElementById('themeToggle').classList.remove('open');
+}
+
+// ─── 事件绑定 ──────────────────────────────────────────
+
+document.getElementById('btnStart').addEventListener('click', () => {
+  // 首次点击时请求通知权限
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+  if (state.timerStatus === 'running') {
+    pauseTimer();
+  } else {
+    startTimer();
+  }
+});
+
+document.getElementById('btnReset').addEventListener('click', resetTimer);
+document.getElementById('btnSkip').addEventListener('click', skipTimer);
+document.getElementById('btnClearHistory').addEventListener('click', Storage.clearHistory);
+
+// 风格下拉
+document.getElementById('themeToggle').addEventListener('click', toggleThemeDropdown);
+document.getElementById('themeOverlay').addEventListener('click', closeThemeDropdown);
+document.querySelectorAll('.theme-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setTheme(btn.dataset.theme);
+    closeThemeDropdown();
+  });
+});
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return; // 输入框中不触发
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (state.timerStatus === 'running') pauseTimer();
+    else startTimer();
+  } else if (e.code === 'KeyR') {
+    resetTimer();
+  } else if (e.code === 'KeyS') {
+    skipTimer();
+  } else if (e.code === 'Escape') {
+    closeThemeDropdown();
+  }
+});
+
+// ─── 初始化 ────────────────────────────────────────────
+
+function init() {
+  const saved = Storage.get();
+  if (saved.theme) setTheme(saved.theme);
+  if (saved.cute) state.selectedCute = saved.cute;
+  if (saved.star) state.selectedStar = saved.star;
+  updateTimerDisplay();
+  updateModeIndicator();
+  updateRoundDots();
+  updateStartButton();
+  updateQuote();
+  renderThemePanel();
+  renderHistory(saved.history || []);
+}
+
+init();
+</script>
+</body>
+</html>
