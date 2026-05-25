@@ -34,6 +34,6 @@
 pomodoro-timer/
   ├── index.html          # 主文件
   └── images/
-        ├── 可爱01~08.jpg  # 可爱角色图片
-        └── 明星/          # 明星图片
+        ├── cute01~08.jpg  # 可爱角色图片
+        └── stars/         # 明星图片
 ```

@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<!-- PeerJS：视频通话信令库。host 可改为自建服务器地址 -->
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
 /* ========== CSS 变量：风格定义 ========== */
 :root {
@@ -484,27 +486,27 @@ const quotes = {
 // ─── 可爱角色数据（替换 imgUrl 为你的图片路径） ──────────
 const cuteCharacters = [
   /* 如需替换真实图片，将 imgUrl 设为图片路径，例如 'images/cat.png' 或网络URL */
-  { id:'cat',    name:'小猫咪',   emoji:'🐱', imgUrl:'images/可爱01.jpg', color:'#ffe0e8' },
-  { id:'bunny',  name:'小兔子',   emoji:'🐰', imgUrl:'images/可爱02.jpg', color:'#fff0f5' },
-  { id:'bear',   name:'小熊软糖', emoji:'🧸', imgUrl:'images/可爱03.jpg', color:'#fff5e6' },
-  { id:'panda',  name:'小熊猫',   emoji:'🐼', imgUrl:'images/可爱04.jpg', color:'#f5f5f0' },
-  { id:'fox',    name:'小狐狸',   emoji:'🦊', imgUrl:'images/可爱05.jpg', color:'#fff0e0' },
-  { id:'penguin',name:'小企鹅',   emoji:'🐧', imgUrl:'images/可爱06.jpg', color:'#f0f0ff' },
-  { id:'duck',   name:'小黄鸭',   emoji:'🐤', imgUrl:'images/可爱07.jpg', color:'#ffffe0' },
-  { id:'shiba',  name:'小柴犬',   emoji:'🐶', imgUrl:'images/可爱08.jpg', color:'#fff5e6' },
+  { id:'cat',    name:'小猫咪',   emoji:'🐱', imgUrl:'images/cute01.jpg', color:'#ffe0e8' },
+  { id:'bunny',  name:'小兔子',   emoji:'🐰', imgUrl:'images/cute02.jpg', color:'#fff0f5' },
+  { id:'bear',   name:'小熊软糖', emoji:'🧸', imgUrl:'images/cute03.jpg', color:'#fff5e6' },
+  { id:'panda',  name:'小熊猫',   emoji:'🐼', imgUrl:'images/cute04.jpg', color:'#f5f5f0' },
+  { id:'fox',    name:'小狐狸',   emoji:'🦊', imgUrl:'images/cute05.jpg', color:'#fff0e0' },
+  { id:'penguin',name:'小企鹅',   emoji:'🐧', imgUrl:'images/cute06.jpg', color:'#f0f0ff' },
+  { id:'duck',   name:'小黄鸭',   emoji:'🐤', imgUrl:'images/cute07.jpg', color:'#ffffe0' },
+  { id:'shiba',  name:'小柴犬',   emoji:'🐶', imgUrl:'images/cute08.jpg', color:'#fff5e6' },
 ];
 
 // ─── 明星数据（替换 imgUrl 为你的图片路径） ──────────────
 const celebrities = [
   /* 如需替换真实图片，将 imgUrl 设为图片路径，例如 'images/star1.jpg' 或网络URL */
-  { id:'liudehua',   name:'刘德华',  emoji:'🎤', imgUrl:'images/明星/刘德华.jpg', color:'#2a2a40' },
-  { id:'zhoujielun', name:'周杰伦',  emoji:'🎹', imgUrl:'images/明星/周杰伦.jpg', color:'#3a2a3a' },
-  { id:'wangyibo',   name:'王一博',  emoji:'💚', imgUrl:'images/明星/王一博.jpg', color:'#2a3a2a' },
-  { id:'dilireba',   name:'迪丽热巴',emoji:'👑', imgUrl:'images/明星/热巴.jpg',   color:'#3a2a2a' },
-  { id:'yangmi',     name:'杨幂',    emoji:'🌟', imgUrl:'images/明星/杨幂.jpg',   color:'#2a2a3a' },
-  { id:'zhaoliying', name:'赵丽颖',  emoji:'🦋', imgUrl:'images/明星/赵丽颖.jpg', color:'#3a3a2a' },
-  { id:'yiyangqianxi',name:'易烊千玺',emoji:'🔥', imgUrl:'images/明星/易烊千玺.jpg', color:'#2a3a3a' },
-  { id:'wangjunkai',  name:'王俊凯',  emoji:'✨', imgUrl:'images/明星/王俊凯.jpg', color:'#3a2a3a' },
+  { id:'liudehua',   name:'刘德华',  emoji:'🎤', imgUrl:'images/stars/liudehua.jpg', color:'#2a2a40' },
+  { id:'zhoujielun', name:'周杰伦',  emoji:'🎹', imgUrl:'images/stars/zhoujielun.jpg', color:'#3a2a3a' },
+  { id:'wangyibo',   name:'王一博',  emoji:'💚', imgUrl:'images/stars/wangyibo.jpg', color:'#2a3a2a' },
+  { id:'dilireba',   name:'迪丽热巴',emoji:'👑', imgUrl:'images/stars/dilireba.jpg', color:'#3a2a2a' },
+  { id:'yangmi',     name:'杨幂',    emoji:'🌟', imgUrl:'images/stars/yangmi.jpg',   color:'#2a2a3a' },
+  { id:'zhaoliying', name:'赵丽颖',  emoji:'🦋', imgUrl:'images/stars/zhaoliying.jpg', color:'#3a3a2a' },
+  { id:'yiyangqianxi',name:'易烊千玺',emoji:'🔥', imgUrl:'images/stars/yiyangqianxi.jpg', color:'#2a3a3a' },
+  { id:'wangjunkai',  name:'王俊凯',  emoji:'✨', imgUrl:'images/stars/wangjunkai.jpg', color:'#3a2a3a' },
 ];
 
 // ─── 应用状态 ─────────────────────────────────────────
@@ -520,11 +522,12 @@ const state = {
   selectedStar: null,      // 选中的明星 ID
   timerInterval: null,
   webrtc: {
-    pc: null,
+    peer: null,
     localStream: null,
     remoteStream: null,
     connected: false,
     isMainVideoRemote: true,
+    roomCode: null,
   },
 };
 
@@ -831,6 +834,7 @@ function renderCouplePanel(panel) {
   const connected = state.webrtc.connected;
   const isMainRemote = state.webrtc.isMainVideoRemote;
   const hasCam = !!state.webrtc.localStream;
+  const roomCode = state.webrtc.roomCode || '';
 
   function videoHtml() {
     if (connected) return `
@@ -846,7 +850,8 @@ function renderCouplePanel(panel) {
 
   function statusText() {
     if (connected) return '已连接 · 点击小窗切换画面';
-    if (hasCam) return '摄像头已开启 · 等待建立连接';
+    if (roomCode && !connected) return '等待对方加入... 房间号：' + roomCode;
+    if (hasCam) return '摄像头已开启 · 输入房间号建立连接';
     return '未连接';
   }
 
@@ -861,20 +866,18 @@ function renderCouplePanel(panel) {
           ? `<button class="couple-btn primary" id="btnStartCam">打开摄像头</button>`
           : `<button class="couple-btn" id="btnStopCam">关闭摄像头</button>`
         }
-        ${hasCam && !connected
-          ? `<button class="couple-btn primary" id="btnCreateOffer">创建连接</button>
-             <button class="couple-btn" id="btnAcceptOffer">加入连接</button>`
-          : ''
-        }
         ${connected
           ? `<button class="couple-btn" id="btnHangUp">挂断</button>`
           : ''
         }
       </div>
-      <div class="couple-signal-box" id="signalBox" style="display:none;">
-        <input type="text" id="signalInput" placeholder="在此粘贴对方发来的连接码...">
-        <button class="couple-btn primary" id="btnSendSignal">发送</button>
-      </div>
+      ${hasCam && !connected ? `
+        <div class="couple-signal-box">
+          <input type="text" id="roomCodeInput" placeholder="输入房间号（如：study2024）" value="${roomCode}">
+          <button class="couple-btn primary" id="btnCreateRoom">创建房间</button>
+          <button class="couple-btn" id="btnJoinRoom">加入房间</button>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -908,48 +911,34 @@ function renderCouplePanel(panel) {
 function bindCoupleEvents() {
   const btnCam = document.getElementById('btnStartCam');
   const btnStopCam = document.getElementById('btnStopCam');
-  const btnCreate = document.getElementById('btnCreateOffer');
-  const btnAccept = document.getElementById('btnAcceptOffer');
+  const btnCreate = document.getElementById('btnCreateRoom');
+  const btnJoin = document.getElementById('btnJoinRoom');
   const btnHangUp = document.getElementById('btnHangUp');
-  const btnSend = document.getElementById('btnSendSignal');
-  const signalBox = document.getElementById('signalBox');
-  const signalInput = document.getElementById('signalInput');
 
   if (btnCam) btnCam.addEventListener('click', startCamera);
   if (btnStopCam) btnStopCam.addEventListener('click', stopCamera);
-  if (btnCreate) btnCreate.addEventListener('click', () => { signalBox.style.display='flex'; signalInput.placeholder='生成中...点击下方发送按钮复制连接码'; createOffer(); });
-  if (btnAccept) btnAccept.addEventListener('click', () => { signalBox.style.display='flex'; signalInput.placeholder='在此粘贴对方发来的连接码，然后点击发送'; });
   if (btnHangUp) btnHangUp.addEventListener('click', hangUp);
-  if (btnSend) btnSend.addEventListener('click', () => handleSignal(signalInput.value));
+  if (btnCreate) btnCreate.addEventListener('click', createRoom);
+  if (btnJoin) btnJoin.addEventListener('click', joinRoom);
 }
 
-// ─── WebRTC 管理器 ──────────────────────────────────────
+// ─── 视频连接（PeerJS） ──────────────────────────────────
 
-/** 信令编码：JSON → gzip 压缩 → Base64，大幅缩短连接码 */
-async function encodeSignal(data) {
-  const stream = new Blob([data]).stream();
-  const compressed = stream.pipeThrough(new CompressionStream('gzip'));
-  const buf = await new Response(compressed).arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin);
-}
-
-async function decodeSignal(base64) {
-  const bin = atob(base64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  const stream = new Blob([bytes]).stream();
-  const decompressed = stream.pipeThrough(new DecompressionStream('gzip'));
-  return await new Response(decompressed).text();
-}
-
-const RTC_CONFIG = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-  ]
+const PEERJS_CONFIG = {
+  host: '0.peerjs.com',
+  port: 443,
+  secure: true,
+  debug: 0,
 };
+
+function generateRoomCode() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
 
 async function startCamera() {
   try {
@@ -972,112 +961,118 @@ function stopCamera() {
     state.webrtc.localStream.getTracks().forEach(t => t.stop());
     state.webrtc.localStream = null;
   }
-  if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
-  state.webrtc.connected = false;
-  state.webrtc.remoteStream = null;
-  renderThemePanel();
+  hangUp();
 }
 
-function createPeerConnection() {
-  if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
-  const pc = new RTCPeerConnection(RTC_CONFIG);
+function createPeerConnection(peerId) {
+  if (state.webrtc.peer) { state.webrtc.peer.destroy(); state.webrtc.peer = null; }
 
-  pc.ontrack = (event) => {
-    if (event.streams[0]) {
-      state.webrtc.remoteStream = event.streams[0];
+  if (typeof Peer === 'undefined') {
+    alert('视频通话组件加载失败，请刷新页面后重试。');
+    return null;
+  }
+
+  const peer = new Peer(peerId, PEERJS_CONFIG);
+
+  peer.on('open', (id) => {
+    state.webrtc.roomCode = id;
+    renderThemePanel();
+  });
+
+  peer.on('call', (call) => {
+    call.answer(state.webrtc.localStream);
+    call.on('stream', (remoteStream) => {
+      state.webrtc.remoteStream = remoteStream;
       state.webrtc.connected = true;
       renderThemePanel();
-    }
-  };
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+    });
+    call.on('close', () => {
       state.webrtc.connected = false;
+      state.webrtc.remoteStream = null;
       renderThemePanel();
-    }
-  };
-  state.webrtc.pc = pc;
-  return pc;
-}
+    });
+    call.on('error', (err) => {
+      console.error('通话错误：', err);
+    });
+  });
 
-/** 将本地音视频轨道加入 PeerConnection */
-function addLocalTracks(pc) {
-  if (!state.webrtc.localStream) return;
-  const senders = pc.getSenders();
-  state.webrtc.localStream.getTracks().forEach(track => {
-    if (!senders.find(s => s.track && s.track.kind === track.kind)) {
-      pc.addTrack(track, state.webrtc.localStream);
+  peer.on('error', (err) => {
+    if (err.type === 'unavailable-id') {
+      alert('该房间号已被占用，请换一个房间号或直接加入已有房间。');
+    } else if (err.type === 'peer-unavailable') {
+      alert('找不到该房间，请确认房间号正确且对方已创建房间。');
+    } else {
+      console.error('PeerJS 错误：', err);
     }
   });
-}
 
-async function createOffer() {
-  const pc = createPeerConnection();
-  addLocalTracks(pc);
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  await waitForIceComplete(pc);
-  const signalData = JSON.stringify({ type:'offer', sdp: pc.localDescription.sdp });
-  const encoded = await encodeSignal(signalData);
-  copyToClipboard(encoded);
-  document.getElementById('signalInput').value = encoded;
-  document.getElementById('signalInput').placeholder = '已生成连接码，复制发送给对方，等待回复...';
-  document.getElementById('coupleStatus').textContent = '已生成连接码，请发送给对方';
-}
-
-async function handleSignal(input) {
-  try {
-    const decoded = JSON.parse(await decodeSignal(input.trim()));
-
-    if (decoded.type === 'offer') {
-      const pc = createPeerConnection();
-      await pc.setRemoteDescription({ type:'offer', sdp:decoded.sdp });
-      addLocalTracks(pc);  // 先设远端描述，再加本地轨道
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      await waitForIceComplete(pc);
-      const signalData = JSON.stringify({ type:'answer', sdp: pc.localDescription.sdp });
-      const encoded = await encodeSignal(signalData);
-      copyToClipboard(encoded);
-      document.getElementById('signalInput').value = encoded;
-      document.getElementById('signalInput').placeholder = '回复码已复制到剪贴板！发送给对方。';
-      document.getElementById('coupleStatus').textContent = '已生成回复码，请发送给对方';
-    } else if (decoded.type === 'answer') {
-      const pc = state.webrtc.pc;
-      if (!pc) throw new Error('未找到连接会话，请先创建连接');
-      await pc.setRemoteDescription({ type:'answer', sdp:decoded.sdp });
-      document.getElementById('signalInput').value = '';
-      document.getElementById('signalInput').placeholder = '连接建立中...';
-      document.getElementById('coupleStatus').textContent = '连接建立中...';
-      document.getElementById('signalBox').style.display = 'none';
-    }
-  } catch(e) {
-    alert('连接码格式错误，请检查是否完整复制。\n\n错误：' + e.message);
-  }
-}
-
-function waitForIceComplete(pc) {
-  return new Promise(resolve => {
-    if (pc.iceGatheringState === 'complete') { resolve(); return; }
-    const handler = () => { if (pc.iceGatheringState === 'complete') { pc.onicegatheringstatechange = null; resolve(); } };
-    pc.onicegatheringstatechange = handler;
-    setTimeout(() => { pc.onicegatheringstatechange = null; resolve(); }, 8000);
+  peer.on('disconnected', () => {
+    state.webrtc.connected = false;
+    renderThemePanel();
   });
+
+  state.webrtc.peer = peer;
+  return peer;
 }
 
-function copyToClipboard(text) {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).catch(() => {});
+function createRoom() {
+  const input = document.getElementById('roomCodeInput');
+  let roomCode = (input.value || '').trim();
+  if (!roomCode) {
+    roomCode = generateRoomCode();
+    input.value = roomCode;
   }
-  // 兜底：选中文本
-  const input = document.getElementById('signalInput');
-  if (input) { input.value = text; input.select(); }
+  const peer = createPeerConnection(roomCode);
+  if (!peer) return;
+  document.getElementById('coupleStatus').textContent = '等待对方加入... 房间号：' + roomCode;
+}
+
+function joinRoom() {
+  const input = document.getElementById('roomCodeInput');
+  const roomCode = (input.value || '').trim();
+  if (!roomCode) { alert('请输入对方分享的房间号'); return; }
+
+  const peer = createPeerConnection(); // 随机 ID
+  if (!peer) return;
+
+  peer.on('open', () => {
+    document.getElementById('coupleStatus').textContent = '正在连接 ' + roomCode + '...';
+    const call = peer.call(roomCode, state.webrtc.localStream);
+    call.on('stream', (remoteStream) => {
+      state.webrtc.remoteStream = remoteStream;
+      state.webrtc.connected = true;
+      renderThemePanel();
+    });
+    call.on('close', () => {
+      state.webrtc.connected = false;
+      state.webrtc.remoteStream = null;
+      renderThemePanel();
+    });
+    call.on('error', (err) => {
+      alert('连接失败：' + (err.message || '对方可能已离开'));
+      state.webrtc.peer.destroy();
+      state.webrtc.peer = null;
+      state.webrtc.roomCode = null;
+      renderThemePanel();
+    });
+  });
+
+  setTimeout(() => {
+    if (!state.webrtc.connected && state.webrtc.peer) {
+      alert('连接超时，请确认房间号正确且对方在线。');
+    }
+  }, 15000);
 }
 
 function hangUp() {
-  if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
+  if (state.webrtc.peer) {
+    state.webrtc.peer.destroy();
+    state.webrtc.peer = null;
+  }
   state.webrtc.connected = false;
   state.webrtc.remoteStream = null;
   state.webrtc.isMainVideoRemote = true;
+  state.webrtc.roomCode = null;
   renderThemePanel();
 }
 
