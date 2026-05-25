@@ -830,27 +830,38 @@ function renderStarPanel(panel) {
 function renderCouplePanel(panel) {
   const connected = state.webrtc.connected;
   const isMainRemote = state.webrtc.isMainVideoRemote;
+  const hasCam = !!state.webrtc.localStream;
+
+  function videoHtml() {
+    if (connected) return `
+      <video class="video-main" id="videoMain" autoplay playsinline></video>
+      <video class="video-pip" id="videoPip" autoplay playsinline muted></video>`;
+    if (hasCam) return `
+      <video class="video-main" id="videoMain" autoplay playsinline muted></video>`;
+    return `<div class="video-placeholder">
+      <span>💕</span>
+      <span>与TA建立连接，一起专注学习</span>
+    </div>`;
+  }
+
+  function statusText() {
+    if (connected) return '已连接 · 点击小窗切换画面';
+    if (hasCam) return '摄像头已开启 · 等待建立连接';
+    return '未连接';
+  }
+
   panel.innerHTML = `
     <div class="couple-panel">
       <div class="video-container" id="videoContainer">
-        ${connected
-          ? `<video class="video-main" id="videoMain" autoplay playsinline></video>
-             <video class="video-pip" id="videoPip" autoplay playsinline muted></video>`
-          : `<div class="video-placeholder">
-               <span>💕</span>
-               <span>与TA建立连接，一起专注学习</span>
-             </div>`
-        }
+        ${videoHtml()}
       </div>
-      <div class="couple-status" id="coupleStatus">
-        ${connected ? '已连接 · 点击小窗切换画面' : '未连接'}
-      </div>
+      <div class="couple-status" id="coupleStatus">${statusText()}</div>
       <div class="couple-controls">
-        ${!state.webrtc.localStream
+        ${!hasCam
           ? `<button class="couple-btn primary" id="btnStartCam">打开摄像头</button>`
           : `<button class="couple-btn" id="btnStopCam">关闭摄像头</button>`
         }
-        ${state.webrtc.localStream && !connected
+        ${hasCam && !connected
           ? `<button class="couple-btn primary" id="btnCreateOffer">创建连接</button>
              <button class="couple-btn" id="btnAcceptOffer">加入连接</button>`
           : ''
@@ -882,6 +893,11 @@ function renderCouplePanel(panel) {
           renderThemePanel();
         });
       }
+    }, 100);
+  } else if (hasCam) {
+    setTimeout(() => {
+      const mainVid = document.getElementById('videoMain');
+      if (mainVid) mainVid.srcObject = state.webrtc.localStream;
     }, 100);
   }
 
