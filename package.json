@@ -1,0 +1,25 @@
+{
+  "name": "project-claude-pomodoro-timer",
+  "version": "1.0.0",
+  "description": "一个支持 8 种视觉风格的网页版番茄钟工具，无需登录、无需后端，打开即用。",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dairenee3022-commits/pomodoro-timer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/dairenee3022-commits/pomodoro-timer/issues"
+  },
+  "homepage": "https://github.com/dairenee3022-commits/pomodoro-timer#readme",
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}

@@ -7,8 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
-<!-- PeerJS：视频通话信令库。host 可改为自建服务器地址 -->
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<!-- 使用自建 WebSocket 信令，无需 PeerJS CDN -->
 <style>
 /* ========== CSS 变量：风格定义 ========== */
 :root {
@@ -246,11 +245,23 @@ body.theme-cute .bg-tint { background:rgba(255,255,255,0.55); }
   font-size:12px; color:var(--text2); font-family:var(--font);
 }
 .wallpaper-slider input[type=range] {
-  flex:1; -webkit-appearance:none; appearance:none; height:4px;
-  border-radius:2px; background:var(--ring-bg); outline:none; cursor:pointer;
+  flex:1; -webkit-appearance:none; appearance:none; height:28px;
+  border-radius:2px; background:transparent; outline:none; cursor:pointer;
+  touch-action:pan-x;
+}
+.wallpaper-slider input[type=range]::-webkit-slider-runnable-track {
+  height:4px; border-radius:2px; background:var(--ring-bg);
 }
 .wallpaper-slider input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+  -webkit-appearance:none; width:28px; height:28px; border-radius:50%;
+  background:var(--accent); cursor:pointer; border:none;
+  margin-top:-12px;
+}
+.wallpaper-slider input[type=range]::-moz-range-track {
+  height:4px; border-radius:2px; background:var(--ring-bg);
+}
+.wallpaper-slider input[type=range]::-moz-range-thumb {
+  width:28px; height:28px; border-radius:50%;
   background:var(--accent); cursor:pointer; border:none;
 }
 .wallpaper-slider .ws-val { min-width:32px; text-align:center; }
@@ -752,12 +763,18 @@ function renderWallpaperSlider(panel) {
   // 绑定滑块事件
   const slider = div.querySelector('#wallpaperSlider');
   const valEl = div.querySelector('#wsVal');
-  slider.addEventListener('input', () => {
+  const bgEl = document.getElementById('bgWallpaper');
+  const onSlide = () => {
     const v = parseInt(slider.value);
     wallpaperPos[imgUrl] = v;
     valEl.textContent = v + '%';
-    document.getElementById('bgWallpaper').style.backgroundPosition = `center ${v}%`;
-  });
+    if (bgEl) bgEl.style.backgroundPosition = `center ${v}%`;
+  };
+  slider.addEventListener('input', onSlide);
+  slider.addEventListener('change', onSlide);
+  // 阻止移动端触摸时页面滚动
+  slider.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive:true });
+  slider.addEventListener('touchmove', (e) => { e.stopPropagation(); }, { passive:true });
 }
 
 function renderThemePanel() {
@@ -834,11 +851,12 @@ function renderCouplePanel(panel) {
   const connected = state.webrtc.connected;
   const isMainRemote = state.webrtc.isMainVideoRemote;
   const hasCam = !!state.webrtc.localStream;
-  const roomCode = state.webrtc.roomCode || '';
+  const currentInput = document.getElementById('roomCodeInput');
+  const roomCode = currentInput ? currentInput.value.trim() : (state.webrtc.roomCode || '');
 
   function videoHtml() {
     if (connected) return `
-      <video class="video-main" id="videoMain" autoplay playsinline></video>
+      <img class="video-main" id="remoteImg" alt="对方画面">
       <video class="video-pip" id="videoPip" autoplay playsinline muted></video>`;
     if (hasCam) return `
       <video class="video-main" id="videoMain" autoplay playsinline muted></video>`;
@@ -849,9 +867,10 @@ function renderCouplePanel(panel) {
   }
 
   function statusText() {
-    if (connected) return '已连接 · 点击小窗切换画面';
+    if (connected) { delete state.webrtc._status; return '已连接'; }
+    if (state.webrtc._status) return state.webrtc._status;
     if (roomCode && !connected) return '等待对方加入... 房间号：' + roomCode;
-    if (hasCam) return '摄像头已开启 · 输入房间号建立连接';
+    if (hasCam) return '摄像头已开启 · 设置房间号后创建或加入房间';
     return '未连接';
   }
 
@@ -871,37 +890,35 @@ function renderCouplePanel(panel) {
           : ''
         }
       </div>
-      ${hasCam && !connected ? `
-        <div class="couple-signal-box">
-          <input type="text" id="roomCodeInput" placeholder="输入房间号（如：study2024）" value="${roomCode}">
+      <div class="couple-signal-box">
+        <input type="text" id="roomCodeInput" placeholder="输入房间号（如：study2024）" value="${roomCode}">
+        ${hasCam && !connected ? `
           <button class="couple-btn primary" id="btnCreateRoom">创建房间</button>
           <button class="couple-btn" id="btnJoinRoom">加入房间</button>
-        </div>
-      ` : ''}
+        ` : `
+          <span style="font-size:11px;color:var(--text2);align-self:center;">先打开摄像头再创建/加入房间</span>
+        `}
+      </div>
     </div>
   `;
 
   // 设置视频源
   if (connected) {
-    setTimeout(() => {
-      const mainVid = document.getElementById('videoMain');
+    requestAnimationFrame(() => {
       const pipVid = document.getElementById('videoPip');
-      if (mainVid && state.webrtc.remoteStream) {
-        mainVid.srcObject = isMainRemote ? state.webrtc.remoteStream : state.webrtc.localStream;
-      }
       if (pipVid && state.webrtc.localStream) {
-        pipVid.srcObject = isMainRemote ? state.webrtc.localStream : state.webrtc.remoteStream;
-        pipVid.addEventListener('click', () => {
-          state.webrtc.isMainVideoRemote = !state.webrtc.isMainVideoRemote;
-          renderThemePanel();
-        });
+        pipVid.srcObject = state.webrtc.localStream;
+        pipVid.play().catch(() => {});
       }
-    }, 100);
+    });
   } else if (hasCam) {
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       const mainVid = document.getElementById('videoMain');
-      if (mainVid) mainVid.srcObject = state.webrtc.localStream;
-    }, 100);
+      if (mainVid) {
+        mainVid.srcObject = state.webrtc.localStream;
+        mainVid.play().catch(() => {});
+      }
+    });
   }
 
   // 绑定按钮事件
@@ -922,14 +939,12 @@ function bindCoupleEvents() {
   if (btnJoin) btnJoin.addEventListener('click', joinRoom);
 }
 
-// ─── 视频连接（PeerJS） ──────────────────────────────────
+// ─── 视频连接（Canvas 帧中继 + WebSocket） ──────────
 
-const PEERJS_CONFIG = {
-  host: '0.peerjs.com',
-  port: 443,
-  secure: true,
-  debug: 0,
-};
+let signaling = null;     // WebSocket 连接
+let relayTimer = null;    // 帧发送定时器
+let relayCanvas = null;   // 帧捕获 canvas
+let relayRunning = false; // 是否正在发送帧
 
 function generateRoomCode() {
   const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
@@ -942,16 +957,17 @@ function generateRoomCode() {
 
 async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+    const stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
     state.webrtc.localStream = stream;
     document.getElementById('localVideo').srcObject = stream;
     renderThemePanel();
   } catch(e) {
-    alert('无法访问摄像头/麦克风，请检查浏览器权限设置。\n\n错误：' + e.message);
+    alert('无法访问摄像头，请检查浏览器权限设置。\n\n错误：' + e.message);
   }
 }
 
 function stopCamera() {
+  stopRelay();
   const container = document.getElementById('videoContainer');
   if (container) container.innerHTML = '';
   const hiddenVid = document.getElementById('localVideo');
@@ -964,113 +980,183 @@ function stopCamera() {
   hangUp();
 }
 
-function createPeerConnection(peerId) {
-  if (state.webrtc.peer) { state.webrtc.peer.destroy(); state.webrtc.peer = null; }
+// ─── Canvas 帧中继 ─────────────────────────────────
 
-  if (typeof Peer === 'undefined') {
-    alert('视频通话组件加载失败，请刷新页面后重试。');
-    return null;
-  }
+function startRelay() {
+  if (relayRunning) return;
+  if (!state.webrtc.localStream) return;
 
-  const peer = new Peer(peerId, PEERJS_CONFIG);
+  // 使用独立 video 元素捕获帧，不依赖 DOM 中可能隐藏的元素
+  const captureVideo = document.createElement('video');
+  captureVideo.srcObject = state.webrtc.localStream;
+  captureVideo.muted = true;
+  captureVideo.playsInline = true;
+  captureVideo.setAttribute('playsinline', '');
+  captureVideo.play().catch(() => {});
+  // 必须添加到 DOM 且不能 display:none（否则部分浏览器不渲染帧）
+  captureVideo.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1';
+  document.body.appendChild(captureVideo);
 
-  peer.on('open', (id) => {
-    state.webrtc.roomCode = id;
-    renderThemePanel();
-  });
+  relayCanvas = document.createElement('canvas');
+  relayCanvas.width = 240;
+  relayCanvas.height = 180;
+  const ctx = relayCanvas.getContext('2d');
+  relayRunning = true;
 
-  peer.on('call', (call) => {
-    call.answer(state.webrtc.localStream);
-    call.on('stream', (remoteStream) => {
-      state.webrtc.remoteStream = remoteStream;
-      state.webrtc.connected = true;
-      renderThemePanel();
-    });
-    call.on('close', () => {
-      state.webrtc.connected = false;
-      state.webrtc.remoteStream = null;
-      renderThemePanel();
-    });
-    call.on('error', (err) => {
-      console.error('通话错误：', err);
-    });
-  });
-
-  peer.on('error', (err) => {
-    if (err.type === 'unavailable-id') {
-      alert('该房间号已被占用，请换一个房间号或直接加入已有房间。');
-    } else if (err.type === 'peer-unavailable') {
-      alert('找不到该房间，请确认房间号正确且对方已创建房间。');
-    } else {
-      console.error('PeerJS 错误：', err);
+  function capture() {
+    if (!relayRunning) {
+      // 清理
+      captureVideo.pause();
+      captureVideo.srcObject = null;
+      captureVideo.remove();
+      return;
     }
-  });
-
-  peer.on('disconnected', () => {
-    state.webrtc.connected = false;
-    renderThemePanel();
-  });
-
-  state.webrtc.peer = peer;
-  return peer;
+    try { ctx.drawImage(captureVideo, 0, 0, 240, 180); } catch(e) {}
+    relayCanvas.toBlob((blob) => {
+      if (blob && signaling && signaling.readyState === WebSocket.OPEN) {
+        signaling.send(blob);
+      }
+    }, 'image/jpeg', 0.4);
+    relayTimer = setTimeout(capture, 150); // ~6 FPS
+  }
+  capture();
 }
 
+function stopRelay() {
+  relayRunning = false;
+  if (relayTimer) { clearTimeout(relayTimer); relayTimer = null; }
+  relayCanvas = null;
+  // 清理远程画面
+  const img = document.getElementById('remoteImg');
+  if (img) { if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src); img.src = ''; }
+}
+
+// ─── WebSocket 信令 ─────────────────────────────────
+
+function connectSignaling(onOpen) {
+  if (signaling) {
+    signaling.onclose = null; signaling.onerror = null; signaling.onmessage = null;
+    signaling.close();
+    signaling = null;
+  }
+
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  signaling = new WebSocket(protocol + '//' + location.host);
+  signaling.binaryType = 'blob';
+
+  signaling.onopen = () => { if (onOpen) onOpen(); };
+
+  signaling.onmessage = (e) => {
+    // 二进制帧（类型判断兼容所有浏览器）
+    if (typeof e.data !== 'string') {
+      state.webrtc._frameCount = (state.webrtc._frameCount || 0) + 1;
+      let blob = e.data;
+      // 某些浏览器可能给 ArrayBuffer，自己转一下
+      if (blob instanceof ArrayBuffer || blob.constructor?.name === 'ArrayBuffer') {
+        blob = new Blob([blob], { type: 'image/jpeg' });
+      }
+      const img = document.getElementById('remoteImg');
+      if (img) {
+        const old = img.src;
+        img.src = URL.createObjectURL(blob);
+        if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+        // 每 10 帧更新一次状态
+        if (state.webrtc._frameCount % 10 === 0) {
+          setStatus('已连接 · 收到 ' + state.webrtc._frameCount + ' 帧');
+        }
+      }
+      return;
+    }
+
+    // JSON 信令
+    const msg = JSON.parse(e.data);
+    console.log('[信令] 收到:', msg.type);
+    switch (msg.type) {
+      case 'created':
+        renderThemePanel();
+        break;
+      case 'peer-joined':
+        state.webrtc.connected = true;
+        setStatus('已连接');
+        startRelay();
+        renderThemePanel();
+        break;
+      case 'joined':
+        state.webrtc.connected = true;
+        setStatus('已连接');
+        startRelay();
+        renderThemePanel();
+        break;
+      case 'hangup':
+        handleRemoteHangup();
+        break;
+      case 'error':
+        alert(msg.message);
+        break;
+    }
+  };
+
+  signaling.onclose = () => {
+    signaling = null;
+    if (state.webrtc.connected) {
+      state.webrtc.connected = false;
+      stopRelay();
+      renderThemePanel();
+    }
+  };
+
+  signaling.onerror = () => {
+    setStatus('信令服务器连接失败');
+  };
+}
+
+function setStatus(text) {
+  state.webrtc._status = text;
+  const el = document.getElementById('coupleStatus');
+  if (el) el.textContent = text;
+}
+
+function handleRemoteHangup() {
+  stopRelay();
+  state.webrtc.connected = false;
+  renderThemePanel();
+}
+
+// ─── 房间操作 ───────────────────────────────────────
+
 function createRoom() {
+  if (!state.webrtc.localStream) { alert('请先打开摄像头'); return; }
   const input = document.getElementById('roomCodeInput');
   let roomCode = (input.value || '').trim();
-  if (!roomCode) {
-    roomCode = generateRoomCode();
-    input.value = roomCode;
-  }
-  const peer = createPeerConnection(roomCode);
-  if (!peer) return;
-  document.getElementById('coupleStatus').textContent = '等待对方加入... 房间号：' + roomCode;
+  if (!roomCode) { roomCode = generateRoomCode(); input.value = roomCode; }
+  state.webrtc.roomCode = roomCode;
+
+  connectSignaling(() => {
+    signaling.send(JSON.stringify({ type: 'create', room: roomCode }));
+    setStatus('等待对方加入... 房间号：' + roomCode);
+  });
 }
 
 function joinRoom() {
+  if (!state.webrtc.localStream) { alert('请先打开摄像头'); return; }
   const input = document.getElementById('roomCodeInput');
   const roomCode = (input.value || '').trim();
   if (!roomCode) { alert('请输入对方分享的房间号'); return; }
+  state.webrtc.roomCode = roomCode;
 
-  const peer = createPeerConnection(); // 随机 ID
-  if (!peer) return;
-
-  peer.on('open', () => {
-    document.getElementById('coupleStatus').textContent = '正在连接 ' + roomCode + '...';
-    const call = peer.call(roomCode, state.webrtc.localStream);
-    call.on('stream', (remoteStream) => {
-      state.webrtc.remoteStream = remoteStream;
-      state.webrtc.connected = true;
-      renderThemePanel();
-    });
-    call.on('close', () => {
-      state.webrtc.connected = false;
-      state.webrtc.remoteStream = null;
-      renderThemePanel();
-    });
-    call.on('error', (err) => {
-      alert('连接失败：' + (err.message || '对方可能已离开'));
-      state.webrtc.peer.destroy();
-      state.webrtc.peer = null;
-      state.webrtc.roomCode = null;
-      renderThemePanel();
-    });
+  connectSignaling(() => {
+    signaling.send(JSON.stringify({ type: 'join', room: roomCode }));
+    setStatus('正在连接 ' + roomCode + '...');
   });
-
-  setTimeout(() => {
-    if (!state.webrtc.connected && state.webrtc.peer) {
-      alert('连接超时，请确认房间号正确且对方在线。');
-    }
-  }, 15000);
 }
 
 function hangUp() {
-  if (state.webrtc.peer) {
-    state.webrtc.peer.destroy();
-    state.webrtc.peer = null;
+  stopRelay();
+  if (signaling && signaling.readyState === WebSocket.OPEN) {
+    signaling.send(JSON.stringify({ type: 'hangup' }));
   }
+  if (signaling) { signaling.close(); signaling = null; }
   state.webrtc.connected = false;
-  state.webrtc.remoteStream = null;
   state.webrtc.isMainVideoRemote = true;
   state.webrtc.roomCode = null;
   renderThemePanel();
