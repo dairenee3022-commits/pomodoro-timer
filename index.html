@@ -954,10 +954,15 @@ async function startCamera() {
 }
 
 function stopCamera() {
+  // 立即清除视频画面，防止残留
+  const container = document.getElementById('videoContainer');
+  if (container) container.innerHTML = '';
+  const hiddenVid = document.getElementById('localVideo');
+  if (hiddenVid) hiddenVid.srcObject = null;
+
   if (state.webrtc.localStream) {
     state.webrtc.localStream.getTracks().forEach(t => t.stop());
     state.webrtc.localStream = null;
-    document.getElementById('localVideo').srcObject = null;
   }
   if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
   state.webrtc.connected = false;
