@@ -925,14 +925,23 @@ function bindCoupleEvents() {
 
 // ─── WebRTC 管理器 ──────────────────────────────────────
 
-/** SDP 信令编码（SDP 本身为 ASCII，但 JSON 封装后统一用 UTF-8 → Base64） */
-function encodeSignal(data) {
-  const bytes = new TextEncoder().encode(data);
-  return btoa(String.fromCharCode(...bytes));
+/** 信令编码：JSON → gzip 压缩 → Base64，大幅缩短连接码 */
+async function encodeSignal(data) {
+  const stream = new Blob([data]).stream();
+  const compressed = stream.pipeThrough(new CompressionStream('gzip'));
+  const buf = await new Response(compressed).arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
 }
-function decodeSignal(base64) {
-  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+
+async function decodeSignal(base64) {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const stream = new Blob([bytes]).stream();
+  const decompressed = stream.pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(decompressed).text();
 }
 
 const RTC_CONFIG = {
@@ -954,7 +963,6 @@ async function startCamera() {
 }
 
 function stopCamera() {
-  // 立即清除视频画面，防止残留
   const container = document.getElementById('videoContainer');
   if (container) container.innerHTML = '';
   const hiddenVid = document.getElementById('localVideo');
@@ -971,22 +979,15 @@ function stopCamera() {
 }
 
 function createPeerConnection() {
-  // 关闭旧连接避免资源泄漏
   if (state.webrtc.pc) { state.webrtc.pc.close(); state.webrtc.pc = null; }
   const pc = new RTCPeerConnection(RTC_CONFIG);
-  // 添加本地流
-  if (state.webrtc.localStream) {
-    state.webrtc.localStream.getTracks().forEach(t => pc.addTrack(t, state.webrtc.localStream));
-  }
-  // 接收远程流
+
   pc.ontrack = (event) => {
-    state.webrtc.remoteStream = event.streams[0];
-    state.webrtc.connected = true;
-    renderThemePanel();
-  };
-  // ICE 候选
-  pc.onicecandidate = (event) => {
-    // ICE candidates 会被包含在 SDP 中（等 gathering 完成）
+    if (event.streams[0]) {
+      state.webrtc.remoteStream = event.streams[0];
+      state.webrtc.connected = true;
+      renderThemePanel();
+    }
   };
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
@@ -998,17 +999,25 @@ function createPeerConnection() {
   return pc;
 }
 
+/** 将本地音视频轨道加入 PeerConnection */
+function addLocalTracks(pc) {
+  if (!state.webrtc.localStream) return;
+  const senders = pc.getSenders();
+  state.webrtc.localStream.getTracks().forEach(track => {
+    if (!senders.find(s => s.track && s.track.kind === track.kind)) {
+      pc.addTrack(track, state.webrtc.localStream);
+    }
+  });
+}
+
 async function createOffer() {
   const pc = createPeerConnection();
+  addLocalTracks(pc);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  // 等待 ICE gathering 完成
   await waitForIceComplete(pc);
-  const signalData = JSON.stringify({
-    type: 'offer',
-    sdp: pc.localDescription.sdp,
-  });
-  const encoded = encodeSignal(signalData);
+  const signalData = JSON.stringify({ type:'offer', sdp: pc.localDescription.sdp });
+  const encoded = await encodeSignal(signalData);
   copyToClipboard(encoded);
   document.getElementById('signalInput').value = encoded;
   document.getElementById('signalInput').placeholder = '已生成连接码，复制发送给对方，等待回复...';
@@ -1017,24 +1026,24 @@ async function createOffer() {
 
 async function handleSignal(input) {
   try {
-    const decoded = JSON.parse(decodeSignal(input.trim()));
-    const pc = state.webrtc.pc || createPeerConnection();
+    const decoded = JSON.parse(await decodeSignal(input.trim()));
 
     if (decoded.type === 'offer') {
+      const pc = createPeerConnection();
       await pc.setRemoteDescription({ type:'offer', sdp:decoded.sdp });
+      addLocalTracks(pc);  // 先设远端描述，再加本地轨道
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await waitForIceComplete(pc);
-      const signalData = JSON.stringify({
-        type: 'answer',
-        sdp: pc.localDescription.sdp,
-      });
-      const encoded = encodeSignal(signalData);
+      const signalData = JSON.stringify({ type:'answer', sdp: pc.localDescription.sdp });
+      const encoded = await encodeSignal(signalData);
       copyToClipboard(encoded);
       document.getElementById('signalInput').value = encoded;
       document.getElementById('signalInput').placeholder = '回复码已复制到剪贴板！发送给对方。';
       document.getElementById('coupleStatus').textContent = '已生成回复码，请发送给对方';
     } else if (decoded.type === 'answer') {
+      const pc = state.webrtc.pc;
+      if (!pc) throw new Error('未找到连接会话，请先创建连接');
       await pc.setRemoteDescription({ type:'answer', sdp:decoded.sdp });
       document.getElementById('signalInput').value = '';
       document.getElementById('signalInput').placeholder = '连接建立中...';
@@ -1049,11 +1058,9 @@ async function handleSignal(input) {
 function waitForIceComplete(pc) {
   return new Promise(resolve => {
     if (pc.iceGatheringState === 'complete') { resolve(); return; }
-    pc.onicegatheringstatechange = () => {
-      if (pc.iceGatheringState === 'complete') resolve();
-    };
-    // 超时保护
-    setTimeout(resolve, 5000);
+    const handler = () => { if (pc.iceGatheringState === 'complete') { pc.onicegatheringstatechange = null; resolve(); } };
+    pc.onicegatheringstatechange = handler;
+    setTimeout(() => { pc.onicegatheringstatechange = null; resolve(); }, 8000);
   });
 }
 
